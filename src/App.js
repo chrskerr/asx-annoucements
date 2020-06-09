@@ -17,18 +17,14 @@ export default function App () {
 			setIsLoading( true );
 			fetch( `https://asx-node.herokuapp.com/?price_sensitive=${ onlyPriceSensitive ? "true" : "false" }&asx300=${ onlyAsx300 ? "true" : "false" }` )
 				.then( res => res.json())
-				.then( data => {
-					const dataPlusSaved = _.map( data, el => {
-						const { id } = el;
-						return {
-							...el,
-							read: _.get( savedData, [ id, "read" ], false ),
-							saved: _.get( savedData,[ id, "saved" ], false ),
-						};
-					});
-					const sortedData = _.orderBy( dataPlusSaved, [ "read", "saved", "id" ], [ "asc", "asc", "desc" ]);
-					setData( sortedData );
-				})
+				.then( data => setData( _.orderBy( _.map( data, el => {
+					const { id } = el;
+					return {
+						...el,
+						read: _.get( savedData, [ id, "read" ], false ),
+						saved: _.get( savedData,[ id, "saved" ], false ),
+					};
+				})), [ "read", "saved", "id" ], [ "asc", "asc", "desc" ]))
 				.catch( error => console.error( error ))
 				.finally(() => setIsLoading( false ));
 		}
@@ -38,6 +34,15 @@ export default function App () {
 		if ( !savedData ) setSavedData({});
 		localStorage.setItem( "savedData", JSON.stringify( savedData ));
 	}, [ savedData ]);
+
+	const dataPlusSaved = _.map( data, el => {
+		const { id } = el;
+		return {
+			...el,
+			read: _.get( savedData, [ id, "read" ], false ),
+			saved: _.get( savedData,[ id, "saved" ], false ),
+		};
+	});
 
 	return (
 		<div className="body">
@@ -68,7 +73,7 @@ export default function App () {
 					}
 				</div>
 			</div>
-			{ !_.isEmpty( data ) && _.map( data, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+			{ !_.isEmpty( dataPlusSaved ) && _.map( dataPlusSaved, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
 		</div>
 	);
 }
