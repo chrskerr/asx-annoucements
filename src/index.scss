@@ -1,0 +1,73 @@
+
+$background: #fffffe;
+$stroke: #094067;
+$highlight: #3da9fc;
+$secondary: #90b4ce;
+$tertiary: #ef4565;
+$heading: #094067;
+$paragraph: #5f6c7b;
+$button: $highlight;
+$button-text: $heading;
+
+@import url( 'https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;300;400;500;700;900&display=swap' );
+
+body {
+    margin: 0; padding: 0;
+    box-sizing: border-box;
+    font-family: 'Noto Sans HK', sans-serif;
+
+    #root {
+        width: 100vw; min-height: 100vh;
+        background-color: $background;
+        margin: 0; padding: 0;
+
+        .body {
+            margin: 0 8em; padding: 2em;
+
+            .loading {
+                height: 8em;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+
+                p {
+                    margin-right: 1em;
+                    color: $tertiary;
+                }
+
+                svg {
+                    color: $tertiary;
+                }
+            }
+
+            .filters {
+                display: flex;
+                flex-direction: row;
+
+                > div {
+                    width: 50%;
+
+                    input {
+                        margin-left: 2em;
+                    }
+                }
+            }
+        }
+    }
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: $heading;
+    margin-bottom: 1em;
+}
+
+p, label {
+    color: $paragraph;
+}
+
+.card {
+    border: 2px solid $stroke;
+    border-radius: 5px;
+    padding: 0.75rem 0.5rem;
+    margin-bottom: 1.5em;
+}
