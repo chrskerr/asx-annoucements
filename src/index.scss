@@ -24,31 +24,35 @@ body {
         .body {
             margin: 0 8em; padding: 2em;
 
-            .loading {
-                height: 8em;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-
-                p {
-                    margin-right: 1em;
-                    color: $tertiary;
-                }
-
-                svg {
-                    color: $tertiary;
-                }
-            }
-
             .filters {
                 display: flex;
                 flex-direction: row;
+                justify-content: space-between;
+                margin-bottom: 1em;
 
                 > div {
-                    width: 50%;
+                    width: 33%;
+                    display: flex; flex-direction: row;
+                    align-items: center;
 
-                    input {
-                        margin-left: 2em;
+                    input[type='checkbox'] {
+                        margin-left: 3em !important;
+                    }
+
+                    p {
+                        margin-right: 1em;
+                    }
+                }
+
+                .loading {
+                    svg {
+                        color: $tertiary;
+                    }
+                }
+
+                .loaded {
+                    svg {
+                        color: $highlight;
                     }
                 }
             }
@@ -65,9 +69,83 @@ p, label {
     color: $paragraph;
 }
 
+a {
+    color: $tertiary
+}
+
+input[type='checkbox'] {
+    width: 12px !important;
+    height: 12px !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    -o-appearance: none;
+    appearance: none;
+    outline: 2px solid $highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+    margin: 0;
+}
+
+input[type="checkbox"]:checked {
+    background-color: $highlight
+}
+
+input[type="checkbox"]:disabled {
+    outline-color: lightgrey;
+}
+
+input[type="checkbox"]:disabled:checked {
+    background-color: lightgrey;
+}
+
 .card {
     border: 2px solid $stroke;
     border-radius: 5px;
-    padding: 0.75rem 0.5rem;
+    padding: 0.75rem 1.75rem;
     margin-bottom: 1.5em;
+
+    .card-header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        border-bottom: 1px dotted $stroke;
+    }
+
+    .card-body {
+        margin: 1em 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+
+        a {
+            svg {
+                margin-left: 1rem;
+            }
+        }
+
+        .read-saved {
+            display: flex; align-items: flex-end;
+            flex-direction: column;
+
+            input[type="checkbox"] {
+                margin-left: 2em !important;
+            }
+        }
+    }
+}
+
+.card.read {
+    background: lightgray;
+
+    a {
+        color: $paragraph;
+    }
+
+    input[type="checkbox"] {
+        outline-color: grey;
+    }
+
+    input[type="checkbox"]:checked {
+        background-color: grey;
+    }
 }
