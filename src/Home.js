@@ -36,9 +36,7 @@ export default function Home () {
 
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
-	const { data, loading, error } = useSubscription( SUBSCRIPTION, { variables: { is_price_sensitive, is_asx_300, time_before }});
-
-	console.log( data, error, time_before );
+	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { is_price_sensitive, is_asx_300, time_before }});
 
 	const announcements = _.get( data, "announcements" );
 	const annoucementsWithSavedData = _.map( announcements, announcement => {
