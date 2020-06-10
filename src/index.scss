@@ -24,14 +24,25 @@ body {
         .body {
             margin: 0 8em; padding: 2em;
 
-            .filters {
+            .flex-box {
                 display: flex;
                 flex-direction: row;
                 justify-content: space-between;
                 margin-bottom: 1em;
 
-                > div {
+                .span-quartewr {
+                    width: 25%;
+                }
+
+                .span-third { 
                     width: 33%;
+                }
+
+                .span-half {
+                    width: 50%;
+                }
+
+                > div {
                     display: flex; flex-direction: row;
                     align-items: center;
 
