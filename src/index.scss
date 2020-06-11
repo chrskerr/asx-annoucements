@@ -134,6 +134,18 @@ input[type="checkbox"]:disabled:checked {
     }
 }
 
+.header {
+
+    h2 {
+        margin-top: 0;
+    }
+
+    h3 {
+        text-align: right;
+        margin-bottom: 0;
+    }
+}
+
 @media screen and ( max-width: 1100px ) {
     .body {
         margin: 0 1em !important;

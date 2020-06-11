@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCheck, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import _ from "lodash";
 import gql from "graphql-tag";
-import { parseJSON, format, formatDistanceToNow, subBusinessDays, set, formatISO } from "date-fns";
+import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
 
 const SUBSCRIPTION = gql`
 subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: Boolean!, $is_asx_300: Boolean! ) {
@@ -62,6 +62,7 @@ export default function Home () {
 	return (
 		<div className="body">
 			<div className="header">
+				<Clock />
 				<h2>ASX Recent Announcement Feed</h2>
 				<p>A scraped collection of ASX announcements, data updated every 10 mins.</p>
 			</div>
@@ -117,7 +118,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 		<div className="card">
 			<div className="card-header">
 				<p>{ ticker } - { name } - { GICS }</p>
-				<p>{ formatDistanceToNow( parsedTime ) } ago - { format( parsedTime, "d LLL @ hh:mm bbb" )} </p>
+				<p>{ format( parsedTime, "hh:mm aaa '-' EE do MMM" ) }</p>
 			</div>
 			<div className="card-body">
 				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ markRead }>{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
@@ -139,4 +140,13 @@ RowCard.propTypes = {
 	data: PropTypes.object,
 	savedData: PropTypes.object,
 	setSavedData: PropTypes.func,
+};
+
+const Clock = () => {
+	const [ time, setTime ] = useState( new Date());
+	const [ intervalRef, setIntervalRef ] = useState( false );
+
+	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
+
+	return <h3>{ format( time, "hh:mm:ss aaa '-' EE do MMM" ) }</h3>;
 };
