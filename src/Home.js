@@ -10,11 +10,14 @@ import { parseJSON, format, formatDistanceToNow, subBusinessDays, set, formatISO
 
 const SUBSCRIPTION = gql`
 subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: Boolean!, $is_asx_300: Boolean! ) {
-    announcements( where: { 
-        time: { _gte: $time_before },
-        is_price_sensitive: { _eq: $is_price_sensitive }, 
-        stock: { is_asx_300: { _eq: $is_asx_300 }}
-    }) {
+    announcements( 
+        where: { 
+            time: { _gte: $time_before },
+            is_price_sensitive: { _eq: $is_price_sensitive }, 
+            stock: { is_asx_300: { _eq: $is_asx_300 }}
+        },
+        order_by: { time: desc }
+    ) {
         ann_download_url
         description
         hotcopper_url
@@ -120,7 +123,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ markRead }>{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
 				<div className="read-saved">
 					<div>
-						<label>Pinned</label>
+						<label>Saved</label>
 						<input type="checkbox" checked={ saved } onChange={ () => setSavedData({ ...savedData, [ id ]: { read, saved: !saved }}) } />
 					</div>
 					<div>

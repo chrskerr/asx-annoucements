@@ -9,7 +9,6 @@ $paragraph: #5f6c7b;
 $button: $highlight;
 $button-text: $heading;
 
-@import url( 'https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@100;300;400;500;700;900&display=swap' );
 
 body {
     margin: 0; padding: 0;
@@ -30,18 +29,6 @@ body {
                 justify-content: space-between;
                 margin-bottom: 1em;
                 flex-wrap: wrap;
-
-                .span-quartewr {
-                    width: 25%;
-                }
-
-                .span-third { 
-                    width: 33%;
-                }
-
-                .span-half {
-                    width: 50%;
-                }
 
                 > div {
                     display: flex; flex-direction: row;
@@ -144,22 +131,6 @@ input[type="checkbox"]:disabled:checked {
                 margin-left: 2em !important;
             }
         }
-    }
-}
-
-.card.read {
-    background: lightgray;
-
-    a {
-        color: $paragraph;
-    }
-
-    input[type="checkbox"] {
-        outline-color: grey;
-    }
-
-    input[type="checkbox"]:checked {
-        background-color: grey;
     }
 }
 
