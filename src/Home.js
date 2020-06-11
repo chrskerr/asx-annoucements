@@ -46,7 +46,10 @@ export default function Home () {
 			read: _.get( savedData, [ id, "read" ], false ),
 			saved: _.get( savedData,[ id, "saved" ], false ),
 		};});
-	const sortedAnnouncements = _.orderBy( annoucementsWithSavedData, [ "read", "saved", "id" ], [ "asc", "asc", "desc" ]);
+
+	const unread = _.filter( annoucementsWithSavedData, { read: false, saved: false });
+	const saved = _.filter( annoucementsWithSavedData, { saved: true });
+	const read = _.filter( annoucementsWithSavedData, { read: true, saved: false });
 
 	useEffect(() => {
 		if ( !savedData ) setSavedData({});
@@ -57,7 +60,7 @@ export default function Home () {
 		<div className="body">
 			<div className="header">
 				<h2>ASX Recent Announcement Feed</h2>
-				<p>A scraped collection of ASX announcements from midnight today.</p>
+				<p>A scraped collection of ASX announcements, data updated every 10 mins.</p>
 			</div>
 			<div className="flex-box">
 				<div>
@@ -86,7 +89,15 @@ export default function Home () {
 					}
 				</div>
 			</div>
-			{ !_.isEmpty( sortedAnnouncements ) && _.map( sortedAnnouncements, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+
+			{ !_.isEmpty( unread ) && <h5>Unread:</h5> }
+			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+            
+			{ !_.isEmpty( saved ) && <h5>Saved:</h5> }
+			{ !_.isEmpty( saved ) && _.map( saved, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+            
+			{ !_.isEmpty( read ) && <h5>Read:</h5> }
+			{ !_.isEmpty( read ) && _.map( read, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
 		</div>
 	);
 }
@@ -95,7 +106,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 	const { id, description, hotcopper_url, stock, time, read, saved } = data;
 	const { name, ticker, GICS } = stock;
 
-	const markRead = () => { if ( !saved ) setSavedData({ ...savedData, [ id ]: { saved, read: !read }}); };
+	const markRead = () => setSavedData({ ...savedData, [ id ]: { saved, read: true }});
 
 	const parsedTime =  parseJSON( time );
 
@@ -109,12 +120,12 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ markRead }>{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
 				<div className="read-saved">
 					<div>
-						<label>Saved</label>
-						<input type="checkbox" checked={ saved } onChange={ () => setSavedData({ ...savedData, [ id ]: { read: false, saved: !saved }}) } />
+						<label>Pinned</label>
+						<input type="checkbox" checked={ saved } onChange={ () => setSavedData({ ...savedData, [ id ]: { read, saved: !saved }}) } />
 					</div>
 					<div>
 						<label>Read</label>
-						<input type="checkbox" checked={ read } onChange={ markRead } disabled={ saved } />
+						<input type="checkbox" checked={ read } onChange={ markRead } disabled={ read } />
 					</div>
 				</div>
 			</div>
