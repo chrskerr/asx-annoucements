@@ -118,7 +118,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 		<div className="card">
 			<div className="card-header">
 				<p>{ ticker } - { name } - { GICS }</p>
-				<p>{ format( parsedTime, "hh:mm aaa '-' EE do MMM" ) }</p>
+				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
 			</div>
 			<div className="card-body">
 				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ markRead }>{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
@@ -148,5 +148,5 @@ const Clock = () => {
 
 	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
 
-	return <h3>{ format( time, "hh:mm:ss aaa '-' EE do MMM" ) }</h3>;
+	return <h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>;
 };
