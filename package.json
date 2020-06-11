@@ -1,6 +1,7 @@
 {
   "name": "asx-annoucements",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "homepage": "https://asx.chrskerr.com/",
   "private": true,
   "dependencies": {
     "@apollo/react-hooks": "^3.1.5",
