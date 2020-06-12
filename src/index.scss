@@ -170,5 +170,15 @@ body {
 @media screen and ( max-width: 600px ) {
     .body {
         margin: 0 !important;
+
+        .inputs-box-row {
+
+            > div {
+                min-width: 100%;
+                justify-content: space-between;
+                padding-right: 2em;
+            }
+        }
+
     }
 }
