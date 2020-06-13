@@ -9,12 +9,12 @@ import gql from "graphql-tag";
 import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
 
 const SUBSCRIPTION = gql`
-subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: Boolean!, $is_asx_300: Boolean! ) {
+subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: Boolean!, $is_asx_300: Boolean!, $exchange: [String!] ) {
 	announcements( 
 		where: { 
 			time: { _gte: $time_before },
 			is_price_sensitive: { _eq: $is_price_sensitive }, 
-			stock: { is_asx_300: { _eq: $is_asx_300 }}
+			stock: { is_asx_300: { _eq: $is_asx_300 }, exchange: { _in: $exchange }}
 		},
 		order_by: { time: desc }
 	) {
@@ -26,9 +26,22 @@ subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensi
 		stock {
 			name ticker
 			is_asx_300 GICS
+            exchange
 		}
 	}
 }`;
+
+const exchangeMap = { 
+	both: [ "ASX", "NSX" ],
+	nsx: [ "NSX" ],
+	asx: [ "ASX" ],
+};
+
+const exchangeOptions = [
+	{ value: "both", label: "Both" },
+	{ value: "asx", label: "ASX" },
+	{ value: "nsx", label: "NSX" },
+];
 
 
 export default function Home () {
@@ -36,10 +49,16 @@ export default function Home () {
 	const [ is_price_sensitive, set_is_price_sensitive ] = useState( true );
 	const [ is_asx_300, set_is_asx_300 ] = useState( true );
 	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
+	const [ exchange, setExchange ] = useState( "asx" );
 
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
-	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { is_price_sensitive, is_asx_300, time_before }});
+	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { 
+		is_price_sensitive, 
+		is_asx_300, 
+		time_before, 
+		exchange: exchangeMap[ exchange ], 
+	}});
 
 	const announcements = _.get( data, "announcements" );
 	const annoucementsWithSavedData = _.map( announcements, announcement => {
@@ -59,27 +78,35 @@ export default function Home () {
 		localStorage.setItem( "savedData", JSON.stringify( savedData ));
 	}, [ savedData ]);
 	
-	useEffect(() => { document.title = `ASX Announcement Feed (${ _.size( unread ) } unread)`; }, [ unread ]);
+	useEffect(() => { document.title = `ASX/NSX Ann Feed (${ _.size( unread ) } unread)`; }, [ unread ]);
+
+	useEffect(() => { if ( exchange !== "asx" ) set_is_asx_300( false );}, [ exchange ]);
 
 	return (
 		<div className="body">
 			<div className="header">
 				<Clock />
-				<h2>ASX Recent Announcement Feed</h2>
-				<p>A scraped collection of ASX announcements, data updated every 10 mins.</p>
+				<h2>ASX & NSX Recent Announcement Feed</h2>
+				<p>A scraped collection of ASX and NSX announcements, data updated every 10 mins.</p>
 			</div>
 			<div className="inputs-box-row">
 				<div onClick={ () => set_is_price_sensitive( !is_price_sensitive ) }>
-					<label>Price sensitive only?</label>
+					<p>Price sensitive only?</p>
 					{ is_price_sensitive ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
-				<div onClick={ () => set_is_asx_300( !is_asx_300 ) }>
-					<label>ASX 300 only?</label>
-					{ is_asx_300 ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
+				<div onClick={ () => { if ( exchange === "asx" ) set_is_asx_300( !is_asx_300 ); }}>
+					<p>ASX 300 only?</p>
+					{ is_asx_300 ? <FontAwesomeIcon className={ exchange !== "asx" ? "disabled" : "" } icon={ faCheck } disabled /> : <FontAwesomeIcon className={ `unchecked ${ exchange !== "asx" ? "disabled" : "" }` } icon={ faTimes } /> }
 				</div>
 				<div onClick={ () => set_is_after_4pm_yesterday( !is_after_4pm_yesterday ) }>
-					<label>After 4pm yesterday only?</label>
+					<p>After 4pm yesterday only?</p>
 					{ is_after_4pm_yesterday ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
+				</div>
+				<div>
+					<p>Exchange:</p>
+					<select value={ exchange } onChange={ e => setExchange( e.target.value ) }>
+						{ !_.isEmpty( exchangeOptions ) && _.map( exchangeOptions, ({ value, label }) => <option key={ value } value={ value }>{ label }</option> )}
+					</select>
 				</div>
 			</div>
 
@@ -101,7 +128,7 @@ export default function Home () {
 
 const RowCard = ({ data, savedData, setSavedData }) => {
 	const { id, description, hotcopper_url, stock, time, read, saved } = data;
-	const { name, ticker, GICS } = stock;
+	const { name, ticker, GICS, exchange } = stock;
 
 	const parsedTime =  parseJSON( time );
 
@@ -109,7 +136,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 		<div className="card">
 			<div className="card-header">
 				<div>
-					<a href={ `https://finance.yahoo.com/quote/${ ticker  }.AX` } target="_blank" rel="noopener noreferrer">{ ticker } - { name }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
+					<a href={ `https://finance.yahoo.com/quote/${ ticker  }.AX` } target="_blank" rel="noopener noreferrer">{ exchange }:{ ticker }{ name && ` - ${ name }` }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
 					<p>{ GICS }</p>
 				</div>
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
