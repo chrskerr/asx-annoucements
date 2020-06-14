@@ -114,6 +114,8 @@ export default function Home () {
 				<FontAwesomeIcon icon={ faSpinner } spin size="3x" />
 			</div> }
 
+			{ ( !loading && _.isEmpty( unread ) && _.isEmpty( saved ) && _.isEmpty( read )) && <p className="-colour-tertiary">No matching announcements</p> }
+
 			{ !_.isEmpty( unread ) && <h5>Unread ({ _.size( unread )}):</h5> }
 			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
 			

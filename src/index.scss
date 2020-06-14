@@ -29,6 +29,10 @@ body {
         color: $secondary
     }
 
+    .-colour-tertiary {
+        color: $tertiary;
+    }
+
     #root {
         width: 100vw; min-height: 100vh;
         background-color: $background;
