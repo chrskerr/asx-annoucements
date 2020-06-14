@@ -9,12 +9,15 @@ import gql from "graphql-tag";
 import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
 
 const SUBSCRIPTION = gql`
-subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: Boolean!, $is_asx_300: Boolean!, $exchange: [String!] ) {
+subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $is_asx_300: [Boolean!], $incl_asx: String!, $incl_nsx: String! ) {
 	announcements( 
 		where: { 
-			time: { _gte: $time_before },
-			is_price_sensitive: { _eq: $is_price_sensitive }, 
-			stock: { is_asx_300: { _eq: $is_asx_300 }, exchange: { _in: $exchange }}
+            time: { _gte: $time_before },
+			is_price_sensitive: { _in: $is_price_sensitive },
+            _or: [
+                { stock: { is_asx_300: { _in: $is_asx_300 }, exchange: { _eq: $incl_asx }}},
+                { stock: { exchange: { _eq: $incl_nsx }}}
+            ]
 		},
 		order_by: { time: desc }
 	) {
@@ -31,12 +34,6 @@ subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensi
 	}
 }`;
 
-const exchangeMap = { 
-	both: [ "ASX", "NSX" ],
-	nsx: [ "NSX" ],
-	asx: [ "ASX" ],
-};
-
 const exchangeOptions = [
 	{ value: "both", label: "Both" },
 	{ value: "asx", label: "ASX" },
@@ -49,15 +46,16 @@ export default function Home () {
 	const [ is_price_sensitive, set_is_price_sensitive ] = useState( true );
 	const [ is_asx_300, set_is_asx_300 ] = useState( true );
 	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
-	const [ exchange, setExchange ] = useState( "asx" );
+	const [ exchange, setExchange ] = useState( "both" );
 
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
 	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { 
-		is_price_sensitive, 
-		is_asx_300, 
-		time_before, 
-		exchange: exchangeMap[ exchange ], 
+		is_price_sensitive: is_price_sensitive ? [ true ] : [ true, false ],
+		is_asx_300: is_asx_300 ? [ true ] : [ true, false ],
+		time_before,
+		incl_asx: ( exchange === "asx" || exchange === "both" ) ? "ASX" : "",
+		incl_nsx: ( exchange === "nsx" || exchange === "both" ) ? "NSX" : "",
 	}});
 
 	const announcements = _.get( data, "announcements" );
@@ -94,9 +92,9 @@ export default function Home () {
 					<p>Price sensitive only?</p>
 					{ is_price_sensitive ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
-				<div onClick={ () => { if ( exchange === "asx" ) set_is_asx_300( !is_asx_300 ); }}>
+				<div onClick={ () => set_is_asx_300( !is_asx_300 ) }>
 					<p>ASX 300 only?</p>
-					{ is_asx_300 ? <FontAwesomeIcon className={ exchange !== "asx" ? "disabled" : "" } icon={ faCheck } disabled /> : <FontAwesomeIcon className={ `unchecked ${ exchange !== "asx" ? "disabled" : "" }` } icon={ faTimes } /> }
+					{ is_asx_300 ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
 				<div onClick={ () => set_is_after_4pm_yesterday( !is_after_4pm_yesterday ) }>
 					<p>After 4pm yesterday only?</p>
@@ -129,17 +127,18 @@ export default function Home () {
 }
 
 const RowCard = ({ data, savedData, setSavedData }) => {
-	const { id, description, hotcopper_url, stock, time, read, saved } = data;
-	const { name, ticker, GICS, exchange } = stock;
+	const { id, description, hotcopper_url, stock, time, read, saved, is_price_sensitive } = data;
+	const { name, ticker, GICS, exchange, is_asx_300 } = stock;
 
 	const parsedTime =  parseJSON( time );
+	const lineTwo = _.compact([ GICS, is_asx_300 ? "ASX300" : false, is_price_sensitive ? "$$" : false ]).join( " - " );
 
 	return (
 		<div className="card">
 			<div className="card-header">
 				<div>
 					<a href={ `https://finance.yahoo.com/quote/${ ticker  }.AX` } target="_blank" rel="noopener noreferrer">{ exchange }:{ ticker }{ name && ` - ${ name }` }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
-					<p>{ GICS }</p>
+					<p>{ lineTwo }</p>
 				</div>
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
 			</div>
