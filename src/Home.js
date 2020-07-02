@@ -9,15 +9,12 @@ import gql from "graphql-tag";
 import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
 
 const SUBSCRIPTION = gql`
-subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $is_asx_300: [Boolean!], $incl_asx: String!, $incl_nsx: String! ) {
+subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $is_asx_300: [Boolean!] ) {
 	announcements( 
 		where: { 
             time: { _gte: $time_before },
 			is_price_sensitive: { _in: $is_price_sensitive },
-            _or: [
-                { stock: { is_asx_300: { _in: $is_asx_300 }, exchange: { _eq: $incl_asx }}},
-                { stock: { exchange: { _eq: $incl_nsx }}}
-            ]
+            stock: { is_asx_300: { _in: $is_asx_300 }}
 		},
 		order_by: { time: desc }
 	) {
@@ -34,19 +31,11 @@ subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensi
 	}
 }`;
 
-const exchangeOptions = [
-	{ value: "both", label: "Both" },
-	{ value: "asx", label: "ASX" },
-	{ value: "nsx", label: "NSX" },
-];
-
-
 export default function Home () {
 	const [ savedData, setSavedData ] = useState( JSON.parse( localStorage.getItem( "savedData" )));
 	const [ is_price_sensitive, set_is_price_sensitive ] = useState( true );
 	const [ is_asx_300, set_is_asx_300 ] = useState( true );
 	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
-	const [ exchange, setExchange ] = useState( "both" );
 
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
@@ -54,8 +43,6 @@ export default function Home () {
 		is_price_sensitive: is_price_sensitive ? [ true ] : [ true, false ],
 		is_asx_300: is_asx_300 ? [ true ] : [ true, false ],
 		time_before,
-		incl_asx: ( exchange === "asx" || exchange === "both" ) ? "ASX" : "",
-		incl_nsx: ( exchange === "nsx" || exchange === "both" ) ? "NSX" : "",
 	}});
 
 	const announcements = _.get( data, "announcements" );
@@ -76,16 +63,15 @@ export default function Home () {
 		localStorage.setItem( "savedData", JSON.stringify( savedData ));
 	}, [ savedData ]);
 	
-	useEffect(() => { document.title = `ASX/NSX Ann Feed (${ _.size( unread ) } unread)`; }, [ unread ]);
-
-	useEffect(() => { if ( exchange !== "asx" ) set_is_asx_300( false );}, [ exchange ]);
+	useEffect(() => { document.title = `ASX  Ann Feed (${ _.size( unread ) } unread)`; }, [ unread ]);
 
 	return (
 		<div className="body">
 			<div className="header">
 				<Clock />
-				<h2>ASX & NSX Recent Announcement Feed</h2>
-				<p>A scraped collection of ASX and NSX announcements, data updated every 10 mins.</p>
+				<h2>ASX Recent Announcement Feed</h2>
+				<p>A scraped collection of ASX and NSX announcements, data live updated every minute during peak hours.</p>
+				<p>History of read and saved annoucments saved locally to your browser.</p>
 			</div>
 			<div className="inputs-box-row">
 				<div onClick={ () => set_is_price_sensitive( !is_price_sensitive ) }>
@@ -99,12 +85,6 @@ export default function Home () {
 				<div onClick={ () => set_is_after_4pm_yesterday( !is_after_4pm_yesterday ) }>
 					<p>After 4pm yesterday only?</p>
 					{ is_after_4pm_yesterday ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
-				</div>
-				<div>
-					<p>Exchange:</p>
-					<select value={ exchange } onChange={ e => setExchange( e.target.value ) }>
-						{ !_.isEmpty( exchangeOptions ) && _.map( exchangeOptions, ({ value, label }) => <option key={ value } value={ value }>{ label }</option> )}
-					</select>
 				</div>
 			</div>
 
