@@ -7,14 +7,15 @@ import { faSpinner, faCheck, faTimes, faExternalLinkAlt } from "@fortawesome/fre
 import _ from "lodash";
 import gql from "graphql-tag";
 import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
+import numeral from "numeral";
 
 const SUBSCRIPTION = gql`
-subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $is_asx_300: [Boolean!] ) {
+subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $market_cap_lower: numeric, $market_cap_upper: numeric ) {
 	announcements( 
 		where: { 
             time: { _gte: $time_before },
 			is_price_sensitive: { _in: $is_price_sensitive },
-            stock: { is_asx_300: { _in: $is_asx_300 }}
+            stock: { market_cap: { _gte: $market_cap_lower, _lte: $market_cap_upper }}
 		},
 		order_by: { time: desc }
 	) {
@@ -25,26 +26,39 @@ subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensi
 		is_price_sensitive
 		stock {
 			name ticker
-			is_asx_300 GICS
-            exchange
+			GICS exchange
+            market_cap
 		}
 	}
 }`;
 
+const marketCapOptions = [
+	{ label: "Small Cap", value: "small" },
+	{ label: "Medium Cap", value: "medium" },
+	{ label: "Large Cap", value: "large" },
+];
+
+const marketCapSizes = {
+	small: { lower: 0, upper: 2000000000 },
+	medium: { lower: 2000000000, upper: 10000000000 },
+	large: { lower: 10000000000, upper: 999999999999999999 },
+};
+
 export default function Home () {
 	const [ savedData, setSavedData ] = useState( JSON.parse( localStorage.getItem( "savedData" )));
 	const [ is_price_sensitive, set_is_price_sensitive ] = useState( true );
-	const [ is_asx_300, set_is_asx_300 ] = useState( true );
+	const [ market_cap, set_market_cap ] = useState( "small" );
 	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
 
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
 	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { 
 		is_price_sensitive: is_price_sensitive ? [ true ] : [ true, false ],
-		is_asx_300: is_asx_300 ? [ true ] : [ true, false ],
 		time_before,
+		market_cap_lower: marketCapSizes[ market_cap ].lower,
+		market_cap_upper: marketCapSizes[ market_cap ].upper,
 	}});
-
+    
 	const announcements = _.get( data, "announcements" );
 	const annoucementsWithSavedData = _.map( announcements, announcement => {
 		const { id } = announcement;
@@ -70,7 +84,7 @@ export default function Home () {
 			<div className="header">
 				<Clock />
 				<h2>ASX Recent Announcement Feed</h2>
-				<p>A scraped collection of ASX and NSX announcements, data live updated every minute during peak hours.</p>
+				<p>A scraped collection of ASX announcements, data live updated every minute during peak hours.</p>
 				<p>History of read and saved annoucments saved locally to your browser.</p>
 			</div>
 			<div className="inputs-box-row">
@@ -78,9 +92,11 @@ export default function Home () {
 					<p>Price sensitive only?</p>
 					{ is_price_sensitive ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
-				<div onClick={ () => set_is_asx_300( !is_asx_300 ) }>
-					<p>ASX 300 only?</p>
-					{ is_asx_300 ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
+				<div>
+					<p>Market cap</p>
+					<select value={ market_cap } onChange={ e => set_market_cap( e.target.value ) }>
+						{ !_.isEmpty( marketCapOptions ) && _.map( marketCapOptions, ({ value, label }) => <option key={ value } value={ value }>{ label }</option> )}
+					</select>
 				</div>
 				<div onClick={ () => set_is_after_4pm_yesterday( !is_after_4pm_yesterday ) }>
 					<p>After 4pm yesterday only?</p>
@@ -108,10 +124,16 @@ export default function Home () {
 
 const RowCard = ({ data, savedData, setSavedData }) => {
 	const { id, description, hotcopper_url, stock, time, read, saved, is_price_sensitive } = data;
-	const { name, ticker, GICS, exchange, is_asx_300 } = stock;
+	const { name, ticker, exchange, market_cap } = stock;
 
 	const parsedTime =  parseJSON( time );
-	const lineTwo = _.compact([ GICS, is_asx_300 ? "ASX300" : false, is_price_sensitive ? "$$" : false ]).join( " - " );
+	const lineTwo = _.compact([ `Market Cap: ${ numeral( market_cap ).format( "0.0a" ) }`, is_price_sensitive ? "Price Sensitive" : false ]).join( " - " );
+
+	const confirmSave = async () => {
+		await wait( 1000 );
+		const saved = window.confirm( `Save announcement:\n${ exchange }:${ ticker } - ${ description }` );
+		setSavedData({ ...savedData, [ id ]: { saved, read: true }});
+	};
 
 	return (
 		<div className="card">
@@ -123,7 +145,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
 			</div>
 			<div className="card-body">
-				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ () => setSavedData({ ...savedData, [ id ]: { saved, read: true }}) }>{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
+				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ confirmSave } >{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
 				<div className="inputs-box-column">
 					<div onClick={ () => setSavedData({ ...savedData, [ id ]: { read, saved: !saved }}) }>
 						<label>Saved</label>
@@ -151,4 +173,12 @@ const Clock = () => {
 	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
 
 	return <h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>;
+};
+
+const wait = time => {
+	return new Promise( resolve => {
+		setTimeout(() => {
+			resolve();
+		}, time );
+	});
 };
