@@ -109,12 +109,12 @@ export default function Home () {
 			</div> }
 
 			{ ( !loading && _.isEmpty( unread ) && _.isEmpty( saved ) && _.isEmpty( read )) && <p className="-colour-tertiary">No matching announcements</p> }
-
-			{ !_.isEmpty( unread ) && <h5>Unread ({ _.size( unread )}):</h5> }
-			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
 			
 			{ !_.isEmpty( saved ) && <h5>Saved ({ _.size( saved )}):</h5> }
 			{ !_.isEmpty( saved ) && _.map( saved, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+
+			{ !_.isEmpty( unread ) && <h5>Unread ({ _.size( unread )}):</h5> }
+			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
 			
 			{ !_.isEmpty( read ) && <h5>Read ({ _.size( read )}):</h5> }
 			{ !_.isEmpty( read ) && _.map( read, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
@@ -129,12 +129,6 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 	const parsedTime =  parseJSON( time );
 	const lineTwo = _.compact([ `Market Cap: ${ numeral( market_cap ).format( "0.0a" ) }`, is_price_sensitive ? "Price Sensitive" : false ]).join( " - " );
 
-	const confirmSave = async () => {
-		await wait( 1000 );
-		const saved = window.confirm( `Save announcement:\n${ exchange }:${ ticker } - ${ description }` );
-		setSavedData({ ...savedData, [ id ]: { saved, read: true }});
-	};
-
 	return (
 		<div className="card">
 			<div className="card-header">
@@ -145,9 +139,9 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
 			</div>
 			<div className="card-body">
-				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer" onClick={ confirmSave } >{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
+				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer">{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
 				<div className="inputs-box-column">
-					<div onClick={ () => setSavedData({ ...savedData, [ id ]: { read, saved: !saved }}) }>
+					<div onClick={ () => setSavedData({ ...savedData, [ id ]: { read: true, saved: !saved }}) }>
 						<label>Saved</label>
 						{ saved ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 					</div>
@@ -173,12 +167,4 @@ const Clock = () => {
 	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
 
 	return <h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>;
-};
-
-const wait = time => {
-	return new Promise( resolve => {
-		setTimeout(() => {
-			resolve();
-		}, time );
-	});
 };
