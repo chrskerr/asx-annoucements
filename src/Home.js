@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCheck, faTimes, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import _ from "lodash";
 import gql from "graphql-tag";
-import { parseJSON, format, subBusinessDays, set, formatISO } from "date-fns";
+import { parseJSON, format, subBusinessDays, set, formatISO, differenceInMinutes } from "date-fns";
 import numeral from "numeral";
 
 const SUBSCRIPTION = gql`
@@ -50,6 +50,11 @@ export default function Home () {
 	const [ market_cap, set_market_cap ] = useState( "small" );
 	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
 
+	const [ time, setTime ] = useState( new Date());
+	const [ intervalRef, setIntervalRef ] = useState( false );
+
+	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
+    
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
 	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { 
@@ -82,7 +87,7 @@ export default function Home () {
 	return (
 		<div className="body">
 			<div className="header">
-				<Clock />
+				<h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>
 				<h2>ASX Recent Announcement Feed</h2>
 				<p>A scraped collection of ASX announcements, data live updated every minute during peak hours.</p>
 				<p>History of read and saved annoucments saved locally to your browser.</p>
@@ -128,6 +133,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 
 	const parsedTime =  parseJSON( time );
 	const lineTwo = _.compact([ `Market Cap: ${ numeral( market_cap ).format( "0.0a" ) }`, is_price_sensitive ? "Price Sensitive" : false ]).join( " - " );
+	const isHotcopperAnnAvailable = differenceInMinutes( new Date(), parsedTime ) <= 20;
 
 	return (
 		<div className="card">
@@ -139,7 +145,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
 			</div>
 			<div className="card-body">
-				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer">{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
+				<a href={ hotcopper_url } target="_blank" rel="noopener noreferrer">{ description }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" className={ isHotcopperAnnAvailable ? "-colour-tertiary" : "" } /></a>
 				<div className="inputs-box-column">
 					<div onClick={ () => setSavedData({ ...savedData, [ id ]: { read: true, saved: !saved }}) }>
 						<label>Saved</label>
@@ -158,13 +164,4 @@ RowCard.propTypes = {
 	data: PropTypes.object,
 	savedData: PropTypes.object,
 	setSavedData: PropTypes.func,
-};
-
-const Clock = () => {
-	const [ time, setTime ] = useState( new Date());
-	const [ intervalRef, setIntervalRef ] = useState( false );
-
-	useEffect(() => { if ( !intervalRef ) setIntervalRef( setInterval(() => setTime( new Date()), 1000 )); }, [ intervalRef ]);
-
-	return <h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>;
 };
