@@ -33,13 +33,15 @@ subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensi
 }`;
 
 const marketCapOptions = [
+	{ label: "Micro Cap", value: "micro" },
 	{ label: "Small Cap", value: "small" },
 	{ label: "Medium Cap", value: "medium" },
 	{ label: "Large Cap", value: "large" },
 ];
 
 const marketCapSizes = {
-	small: { lower: 0, upper: 2000000000 },
+	micro: { lower: 0, upper: 20000000 },
+	small: { lower: 20000000, upper: 2000000000 },
 	medium: { lower: 2000000000, upper: 10000000000 },
 	large: { lower: 10000000000, upper: 999999999999999999 },
 };
@@ -129,7 +131,7 @@ export default function Home () {
 
 const RowCard = ({ data, savedData, setSavedData }) => {
 	const { id, description, hotcopper_url, stock, time, read, saved, is_price_sensitive } = data;
-	const { name, ticker, exchange, market_cap } = stock;
+	const { name, ticker, exchange, market_cap, GICS } = stock;
 
 	const parsedTime =  parseJSON( time );
 	const lineTwo = _.compact([ `Market Cap: ${ numeral( market_cap ).format( "0.0a" ) }`, is_price_sensitive ? "Price Sensitive" : false ]).join( " - " );
@@ -140,6 +142,7 @@ const RowCard = ({ data, savedData, setSavedData }) => {
 			<div className="card-header">
 				<div>
 					<a href={ `https://finance.yahoo.com/quote/${ ticker  }.AX` } target="_blank" rel="noopener noreferrer">{ exchange }:{ ticker }{ name && ` - ${ name }` }<FontAwesomeIcon icon={ faExternalLinkAlt } size="xs" /></a>
+					<p>{ GICS }</p>
 					<p>{ lineTwo }</p>
 				</div>
 				<p>{ format( parsedTime, "h:mm aaa '-' EE do MMM" ) }</p>
