@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from "react";
 import PropTypes from "proptypes";
-import { useSubscription } from "@apollo/react-hooks";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCheck, faTimes, faExternalLinkAlt } from "@fortawesome/free-solid-svg-icons";
 import _ from "lodash";
-import gql from "graphql-tag";
+import { gql, useSubscription } from "@apollo/client";
 import { parseJSON, format, subBusinessDays, set, formatISO, differenceInMinutes } from "date-fns";
 import numeral from "numeral";
+import localforage from "localforage";
+
 
 const SUBSCRIPTION = gql`
 subscription SubcribeAnnouncements ( $time_before: timestamptz!, $is_price_sensitive: [Boolean!], $market_cap_lower: numeric, $market_cap_upper: numeric ) {
@@ -47,18 +48,30 @@ const marketCapSizes = {
 };
 
 export default function Home () {
-	const [ savedData, setSavedData ] = useState( JSON.parse( localStorage.getItem( "savedData" )));
-	const [ is_price_sensitive, set_is_price_sensitive ] = useState( true );
-	const [ market_cap, set_market_cap ] = useState( "small" );
-	const [ is_after_4pm_yesterday, set_is_after_4pm_yesterday ] = useState( true );
-    
+	const [ settings, setSettings ] = useState({
+		loaded: false,
+		history: {},
+		is_price_sensitive: true,
+		is_after_4pm_yesterday: true,
+		market_cap: "small",
+		updateSettings: ( setting, value ) => setSettings( s => ({ ...s, [ setting ]: value })),
+	});
+	const { loaded, history, is_price_sensitive, is_after_4pm_yesterday, market_cap, updateSettings } = settings;
+
+	useEffect(() => {
+		( async () => {
+			const oldSettings = await localforage.getItem( "settings" );
+			setSettings( s => ({ ...s, ...oldSettings, loaded: true }));
+		})();
+	}, []);
+
 	const time_before = is_after_4pm_yesterday ? formatISO( set( subBusinessDays( new Date(), 1 ), { hours: 16, minutes: 0, seconds: 0 })) : formatISO( 0 );
 
 	const { data, loading } = useSubscription( SUBSCRIPTION, { variables: { 
 		is_price_sensitive: is_price_sensitive ? [ true ] : [ true, false ],
 		time_before,
-		market_cap_lower: marketCapSizes[ market_cap ].lower,
-		market_cap_upper: marketCapSizes[ market_cap ].upper,
+		market_cap_lower: _.get( marketCapSizes, [ market_cap, "lower" ]),
+		market_cap_upper: _.get( marketCapSizes, [ market_cap, "upper" ]),
 	}});
     
 	const announcements = _.get( data, "announcements" );
@@ -66,8 +79,8 @@ export default function Home () {
 		const { id } = announcement;
 		return {
 			...announcement,
-			read: _.get( savedData, [ id, "read" ], false ),
-			saved: _.get( savedData,[ id, "saved" ], false ),
+			read: _.get( history, [ id, "read" ], false ),
+			saved: _.get( history,[ id, "saved" ], false ),
 		};});
 
 	const unread = _.filter( annoucementsWithSavedData, { read: false, saved: false });
@@ -75,11 +88,25 @@ export default function Home () {
 	const read = _.filter( annoucementsWithSavedData, { read: true, saved: false });
 
 	useEffect(() => {
-		if ( !savedData ) setSavedData({});
-		localStorage.setItem( "savedData", JSON.stringify( savedData ));
-	}, [ savedData ]);
+		if ( !history ) updateSettings( "history", {});
+		localforage.setItem( "settings", _.omit( settings, [ "updateSettings" ]));
+	}, [ settings ]);
 	
-	useEffect(() => { document.title = `ASX  Ann Feed (${ _.size( unread ) } unread)`; }, [ unread ]);
+	useEffect(() => { 
+		document.title = `ASX  Ann Feed (${ _.size( unread ) } unread)`; 
+	}, [ unread ]);
+
+	const markAllRead = () => {
+		updateSettings( 
+			"history",
+			_.reduce( announcements, ( acc, { id }) => ({
+				...acc,
+				[ id ]: { read: true, saved: _.get( history, [ id, "saved" ], false ) },
+			}), history ),
+		);
+	};
+
+	if ( !loaded ) return null;
 
 	return (
 		<div className="body">
@@ -90,17 +117,17 @@ export default function Home () {
 				<p>History of read and saved annoucments saved locally to your browser.</p>
 			</div>
 			<div className="inputs-box-row">
-				<div onClick={ () => set_is_price_sensitive( !is_price_sensitive ) }>
+				<div onClick={ () => updateSettings( "is_price_sensitive", !is_price_sensitive ) }>
 					<p>Price sensitive only?</p>
 					{ is_price_sensitive ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
 				<div>
 					<p>Market cap</p>
-					<select value={ market_cap } onChange={ e => set_market_cap( e.target.value ) }>
+					<select value={ market_cap } onChange={ e => updateSettings( "market_cap", e.target.value ) }>
 						{ !_.isEmpty( marketCapOptions ) && _.map( marketCapOptions, ({ value, label }) => <option key={ value } value={ value }>{ label }</option> )}
 					</select>
 				</div>
-				<div onClick={ () => set_is_after_4pm_yesterday( !is_after_4pm_yesterday ) }>
+				<div onClick={ () => updateSettings( "is_after_4pm_yesterday", !is_after_4pm_yesterday ) }>
 					<p>After 4pm yesterday only?</p>
 					{ is_after_4pm_yesterday ? <FontAwesomeIcon icon={ faCheck } /> : <FontAwesomeIcon icon={ faTimes } className="unchecked" /> }
 				</div>
@@ -110,16 +137,20 @@ export default function Home () {
 				<FontAwesomeIcon icon={ faSpinner } spin size="3x" />
 			</div> }
 
+			{ ( !loading && _.isEmpty( unread )) && <div className="mark-read-button">
+				<button onClick={ markAllRead }>Mark All Read</button>
+			</div>}
+
 			{ ( !loading && _.isEmpty( unread ) && _.isEmpty( saved ) && _.isEmpty( read )) && <p className="-colour-tertiary">No matching announcements</p> }
 			
 			{ !_.isEmpty( saved ) && <h5>Saved ({ _.size( saved )}):</h5> }
-			{ !_.isEmpty( saved ) && _.map( saved, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+			{ !_.isEmpty( saved ) && _.map( saved, el => <RowCard data={ el } key={ el.id } savedData={ history } setSavedData={ history => updateSettings( "history", history ) } /> ) }
 
 			{ !_.isEmpty( unread ) && <h5>Unread ({ _.size( unread )}):</h5> }
-			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+			{ !_.isEmpty( unread ) && _.map( unread, el => <RowCard data={ el } key={ el.id } savedData={ history } setSavedData={ history => updateSettings( "history", history ) } /> ) }
 			
 			{ !_.isEmpty( read ) && <h5>Read ({ _.size( read )}):</h5> }
-			{ !_.isEmpty( read ) && _.map( read, el => <RowCard data={ el } key={ el.id } savedData={ savedData } setSavedData={ setSavedData } /> ) }
+			{ !_.isEmpty( read ) && _.map( read, el => <RowCard data={ el } key={ el.id } savedData={ history } setSavedData={ history => updateSettings( "history", history ) } /> ) }
 		</div>
 	);
 }
@@ -175,6 +206,6 @@ const Clock = () => {
 			if ( intervalRef ) clearInterval( intervalRef );
 		};
 	}, [ intervalRef ]);
-	
+
 	return <h3>{ format( time, "h:mm:ss aaa '-' EE do MMM" ) }</h3>;
 };

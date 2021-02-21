@@ -77,6 +77,11 @@ body {
                 }
             }
 
+			.mark-read-button {
+				text-align: right;
+				margin-bottom: -2em;
+			}
+
             .card {
                 border: 2px solid $stroke;
                 border-radius: 5px;
