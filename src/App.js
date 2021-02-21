@@ -1,45 +1,57 @@
 
-import React from "react";
-import Home from "./Home";
-import { ApolloProvider } from "@apollo/react-hooks";
-import ApolloClient from "apollo-client";
-import { WebSocketLink } from "apollo-link-ws";
-import { HttpLink } from "apollo-link-http";
-import { split } from "apollo-link";
-import { getMainDefinition } from "apollo-utilities";
-import { InMemoryCache } from "apollo-cache-inmemory";
+import React, { useState, useEffect } from "react";
+import { WebSocketLink } from "@apollo/client/link/ws";
+import { split, HttpLink, InMemoryCache, ApolloClient, ApolloProvider } from "@apollo/client";
+import { getMainDefinition } from "@apollo/client/utilities";
+import { CachePersistor, LocalForageWrapper } from "apollo3-cache-persist";
+import localforage from "localforage";
+
+const Home = React.lazy(() => import( "./Home" ));
 
 export default function App () {
+	const [ client, setClient ] = useState( false );
+	useEffect(() => {
+		( async () => {
+			const cache = new InMemoryCache();
 
-	const httpLink = new HttpLink({
-		uri: "https://quiet-river-86309.herokuapp.com/v1/graphql",
-	});
-    
-	const wsLink = new WebSocketLink({
-		uri: "wss://quiet-river-86309.herokuapp.com/v1/graphql",
-		options: {
-			reconnect: true,
-			timeout: 30000,
-		},
-	});
+			const newPersistor = new CachePersistor({
+				storage: new LocalForageWrapper( localforage ),
+				trigger: "write", cache,
+			});
+			await newPersistor.restore();
 
-	const link = split(
-		({ query }) => {
-			const { kind, operation } = getMainDefinition( query );
-			return kind === "OperationDefinition" && operation === "subscription";
-		},
-		wsLink,
-		httpLink,
-	);
+			const httpLink = new HttpLink({
+				uri: "https://quiet-river-86309.herokuapp.com/v1/graphql",
+			});
+			
+			const wsLink = new WebSocketLink({
+				uri: "wss://quiet-river-86309.herokuapp.com/v1/graphql",
+				options: {
+					reconnect: true,
+				},
+			});
+		
+			const link = split(
+				({ query }) => {
+					const { kind, operation } = getMainDefinition( query );
+					return kind === "OperationDefinition" && operation === "subscription";
+				},
+				wsLink,
+				httpLink,
+			);
 
-	const client = new ApolloClient({
-		link,
-		cache: new InMemoryCache(),
-	});
+			setClient( new ApolloClient({ link, cache }));
+			
+		})();
+	}, []);
+
+	if ( !client ) return null;
 
 	return (
 		<ApolloProvider client={ client }>
-			<Home />
+			<React.Suspense fallback={ <div></div> }>
+				<Home />
+			</React.Suspense>
 		</ApolloProvider>
 	);
 }
