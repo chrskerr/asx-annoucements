@@ -137,7 +137,7 @@ export default function Home () {
 				<FontAwesomeIcon icon={ faSpinner } spin size="3x" />
 			</div> }
 
-			{ ( !loading && _.isEmpty( unread )) && <div className="mark-read-button">
+			{ ( !loading && !_.isEmpty( unread )) && <div className="mark-read-button">
 				<button onClick={ markAllRead }>Mark All Read</button>
 			</div>}
 
